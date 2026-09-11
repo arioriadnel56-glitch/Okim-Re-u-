@@ -6,6 +6,7 @@ import Layout from '../components/Layout.jsx';
 import StatusBadge, { PaymentBadge } from '../components/StatusBadge.jsx';
 import DeleteReceiptModal from '../components/DeleteReceiptModal.jsx';
 import { buildWhatsappShareUrl } from '../utils/whatsapp.js';
+import { buildReceiptImageBlob } from '../utils/receiptImage.js';
 
 function fcfa(n) {
   return `${Math.round(n || 0).toLocaleString('fr-FR').replace(/\u202f/g, ' ')} FCFA`;
@@ -270,21 +271,22 @@ function ShareReceipt({ receipt, onSent }) {
     setError('');
     setSendingWhatsapp(true);
     try {
-      const blob = await fetchPdfBlob(receipt.id);
-      const file = new File([blob], `facture-okimart-${receipt.numero}.pdf`, { type: 'application/pdf' });
+      // La facture est rendue en image (PNG) — aucun PDF, aucun lien n'est envoyé.
+      const blob = await buildReceiptImageBlob(receipt);
+      const file = new File([blob], `facture-okimart-${receipt.numero}.png`, { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        // Ouvre le partage natif du téléphone : en choisissant WhatsApp, le PDF est joint
-        // directement au message, avec le court texte explicatif, sans aucun lien.
+        // Ouvre le partage natif du téléphone : en choisissant WhatsApp, l'image de la
+        // facture est jointe directement au message, avec le court texte explicatif.
         await navigator.share({ files: [file], text: whatsappMessage, title: `Facture ${receipt.numero}` });
       } else {
         // Le navigateur (généralement un ordinateur) ne sait pas partager de fichier
-        // directement : on télécharge la facture, puis on ouvre WhatsApp avec le message
-        // prêt à envoyer — il suffit alors de joindre le fichier téléchargé à la conversation.
+        // directement : on télécharge l'image de la facture, puis on ouvre WhatsApp avec
+        // le message prêt à envoyer — il suffit alors de joindre l'image téléchargée.
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `facture-okimart-${receipt.numero}.pdf`;
+        a.download = `facture-okimart-${receipt.numero}.png`;
         document.body.appendChild(a);
         a.click();
         a.remove();

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { api, fetchPdfBlob } from '../api/client.js';
+import { api, fetchPdfBlob, fetchExportPdfBlob } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Layout from '../components/Layout.jsx';
 import StatusBadge, { PaymentBadge } from '../components/StatusBadge.jsx';
 import { buildWhatsappShareUrl } from '../utils/whatsapp.js';
+import { buildReceiptImageBlob } from '../utils/receiptImage.js';
 
 function fcfa(n) {
   return `${Math.round(n || 0).toLocaleString('fr-FR').replace(/\u202f/g, ' ')} FCFA`;
@@ -17,6 +18,7 @@ export default function ClientPortal() {
   const [receipts, setReceipts] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     api.get('/receipts')
@@ -35,9 +37,52 @@ export default function ClientPortal() {
     }
   }
 
+  async function handleDownloadPdf(receipt) {
+    try {
+      const blob = await fetchPdfBlob(receipt.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `facture-okimart-${receipt.numero}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function handleExportAll() {
+    setExporting(true);
+    setError('');
+    try {
+      const blob = await fetchExportPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mes-recus-okimart-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <Layout>
-      <h1 className="font-display text-2xl text-navy-dark mb-2">Bonjour {user.nom.split(' ')[0]}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <h1 className="font-display text-2xl text-navy-dark">Bonjour {user.nom.split(' ')[0]}</h1>
+        {receipts.length > 0 && (
+          <button onClick={handleExportAll} disabled={exporting} className="btn btn-outline">
+            {exporting ? 'Génération…' : 'Télécharger tout en PDF'}
+          </button>
+        )}
+      </div>
       <p className="text-stone-500 text-sm mb-8">Suivez ici le statut de vos séances chez OKIM'ART.</p>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
@@ -58,6 +103,13 @@ export default function ClientPortal() {
                   </div>
                   <button onClick={() => handleViewPdf(r.id)} className="btn btn-outline">Voir le reçu</button>
                 </div>
+
+                <button
+                  onClick={() => handleDownloadPdf(r)}
+                  className="btn btn-gold w-full mb-4"
+                >
+                  Télécharger la facture (PDF)
+                </button>
 
                 <ReceiptQuickShare receipt={r} clientEmail={user.email} clientNom={user.nom} />
 
@@ -99,12 +151,42 @@ export default function ClientPortal() {
   );
 }
 
-function ReceiptQuickShare({ receipt, clientEmail }) {
+function ReceiptQuickShare({ receipt, clientEmail, clientNom }) {
   const [sending, setSending] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState('');
 
-  const publicUrl = `${window.location.origin}/api/verify/${receipt.code_verification}/pdf`;
-  const whatsappMessage = `Voici mon reçu OKIM'ART ${receipt.numero} (${receipt.site_nom}) : ${publicUrl}`;
+  // Message court joint à l'image de la facture — pas de lien.
+  const whatsappMessage = `Voici la facture de ma séance ${receipt.type_seance} chez OKIM'ART (${receipt.site_nom}).`;
+
+  async function handleShareWhatsapp() {
+    setSharing(true);
+    setMessage('');
+    try {
+      const blob = await buildReceiptImageBlob({ ...receipt, client_nom: receipt.client_nom || clientNom });
+      const file = new File([blob], `facture-okimart-${receipt.numero}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: whatsappMessage, title: `Facture ${receipt.numero}` });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `facture-okimart-${receipt.numero}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        window.open(buildWhatsappShareUrl(null, whatsappMessage), '_blank');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setMessage(err.message || 'Impossible de partager la facture.');
+      }
+    } finally {
+      setSharing(false);
+    }
+  }
 
   async function handleEmailToSelf() {
     if (!clientEmail) {
@@ -125,14 +207,9 @@ function ReceiptQuickShare({ receipt, clientEmail }) {
 
   return (
     <div className="flex items-center gap-3 mb-4 text-xs">
-      <a
-        href={buildWhatsappShareUrl(null, whatsappMessage)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-gold-dark hover:underline"
-      >
-        Partager par WhatsApp
-      </a>
+      <button onClick={handleShareWhatsapp} disabled={sharing} className="text-gold-dark hover:underline disabled:opacity-50">
+        {sharing ? 'Préparation…' : 'Partager par WhatsApp'}
+      </button>
       <span className="text-stone-300">·</span>
       <button onClick={handleEmailToSelf} disabled={sending} className="text-gold-dark hover:underline disabled:opacity-50">
         {sending ? 'Envoi…' : 'Recevoir par email'}
