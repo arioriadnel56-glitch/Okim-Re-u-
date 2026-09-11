@@ -3,7 +3,7 @@ import { dbGet, initSchema, pool } from './db.js';
 import { hashPassword } from './auth.js';
 
 const ADMIN_PHONE = process.env.SEED_ADMIN_PHONE || '0198874300';
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'okimart2026';
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || '12345678';
 
 async function main() {
   await initSchema();
