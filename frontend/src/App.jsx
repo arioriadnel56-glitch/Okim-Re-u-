@@ -14,6 +14,7 @@ import Receipts from './pages/Receipts.jsx';
 import ReceiptDetail from './pages/ReceiptDetail.jsx';
 import Sites from './pages/Sites.jsx';
 import Staff from './pages/Staff.jsx';
+import Corbeille from './pages/Corbeille.jsx';
 import ClientPortal from './pages/ClientPortal.jsx';
 import PublicVerify from './pages/PublicVerify.jsx';
 
@@ -51,6 +52,10 @@ export default function App() {
       } />
       <Route path="/receipts/:id" element={
         <ProtectedRoute><ReceiptDetail /></ProtectedRoute>
+      } />
+
+      <Route path="/corbeille" element={
+        <ProtectedRoute roles={['super_admin']}><Corbeille /></ProtectedRoute>
       } />
 
       <Route path="/sites" element={

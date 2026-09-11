@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { dbGet, dbAll } from '../db.js';
 import { requireAuth, requireRole, hashPassword, scopeSiteId } from '../auth.js';
 import { generateTempPassword } from '../utils/codes.js';
+import { buildSessionsListPdf } from '../utils/pdf.js';
 
 const router = Router();
 
@@ -82,6 +83,31 @@ router.get('/', requireAuth, requireRole('staff', 'super_admin'), async (req, re
     res.json({ sessions: rows });
   } catch (e) {
     next(e);
+  }
+});
+
+// Bouton dédié côté super admin : téléchargement PDF de la liste de toutes les séances
+// réalisées, tous studios confondus. Doit rester déclaré avant '/:id' pour qu'Express ne
+// confonde pas "export" avec un identifiant de séance.
+router.get('/export/pdf', requireAuth, requireRole('super_admin'), async (req, res) => {
+  try {
+    const rows = await dbAll(
+      `SELECT sp.*, u.nom as client_nom, u.telephone as client_telephone, st.nom as staff_nom, s.nom as site_nom
+       FROM sessions_photo sp
+       JOIN users u ON u.id = sp.client_id
+       JOIN users st ON st.id = sp.staff_id
+       JOIN sites s ON s.id = sp.site_id
+       ORDER BY sp.date_seance DESC, sp.created_at DESC`
+    );
+
+    const pdfBuffer = await buildSessionsListPdf(rows, { titre: 'Liste de toutes les séances réalisées' });
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="seances-okimart-${dateStr}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Erreur lors de la génération de l'export PDF des séances." });
   }
 });
 

@@ -131,4 +131,41 @@ export async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_sessions_site ON sessions_photo(site_id);
     CREATE INDEX IF NOT EXISTS idx_users_site ON users(site_id);
   `);
+
+  // Corbeille (suppression douce) des reçus : une secrétaire ne peut que "demander" la
+  // suppression, en la justifiant ; seul le super admin peut ensuite valider (suppression
+  // définitive) ou restaurer, dans un délai de 30 jours.
+  await pool.query(`
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS delete_status TEXT NOT NULL DEFAULT 'aucune'
+      CHECK (delete_status IN ('aucune','en_attente','refusee'));
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS delete_reason TEXT;
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS delete_requested_by INTEGER REFERENCES users(id);
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS delete_requested_at TIMESTAMPTZ;
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS delete_reviewed_by INTEGER REFERENCES users(id);
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS delete_reviewed_at TIMESTAMPTZ;
+
+    CREATE INDEX IF NOT EXISTS idx_receipts_delete_status ON receipts(delete_status);
+
+    -- Archive conservée même après suppression définitive d'un reçu, pour garder une trace
+    -- (numéro, motif, qui a demandé/validé) à des fins de contrôle interne.
+    CREATE TABLE IF NOT EXISTS receipts_deleted_archive (
+      id SERIAL PRIMARY KEY,
+      receipt_id INTEGER NOT NULL,
+      numero TEXT NOT NULL,
+      code_verification TEXT,
+      site_id INTEGER,
+      client_id INTEGER,
+      montant_total DOUBLE PRECISION,
+      montant_paye DOUBLE PRECISION,
+      motif TEXT,
+      demande_par INTEGER REFERENCES users(id),
+      demande_par_nom TEXT,
+      demande_at TIMESTAMPTZ,
+      valide_par INTEGER REFERENCES users(id),
+      valide_par_nom TEXT,
+      valide_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      receipt_snapshot JSONB
+    );
+  `);
 }

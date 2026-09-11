@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api, fetchPdfBlob } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Layout from '../components/Layout.jsx';
 import StatusBadge, { PaymentBadge } from '../components/StatusBadge.jsx';
+import DeleteReceiptModal from '../components/DeleteReceiptModal.jsx';
 import { buildWhatsappShareUrl } from '../utils/whatsapp.js';
 
 function fcfa(n) {
@@ -17,11 +18,13 @@ const NEXT_STATUS = {
 
 export default function ReceiptDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   function load() {
     api.get(`/receipts/${id}`).then(setData).catch((e) => setError(e.message));
@@ -65,6 +68,12 @@ export default function ReceiptDetail() {
     }
   }
 
+  async function handleConfirmDelete(motif) {
+    await api.post(`/receipts/${id}/demander-suppression`, { motif });
+    setShowDeleteModal(false);
+    navigate('/receipts');
+  }
+
   if (!data) {
     return (
       <Layout>
@@ -90,10 +99,22 @@ export default function ReceiptDetail() {
           {isStaff && (
             <Link to={`/sessions/${receipt.session_id}`} className="btn btn-outline">Voir la séance</Link>
           )}
+          {isStaff && (
+            <button onClick={() => setShowDeleteModal(true)} className="btn btn-outline text-red-600 hover:bg-red-50">
+              Supprimer
+            </button>
+          )}
         </div>
       </div>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {showDeleteModal && (
+        <DeleteReceiptModal
+          receipt={receipt}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
         <div className="card p-5">

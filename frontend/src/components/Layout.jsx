@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { HomeIcon, ReceiptIcon, CalendarIcon, BuildingIcon, UsersIcon, PackageIcon } from './icons.jsx';
+import { HomeIcon, ReceiptIcon, CalendarIcon, BuildingIcon, UsersIcon, PackageIcon, TrashIcon } from './icons.jsx';
 
 const NAV_BY_ROLE = {
   super_admin: [
     { to: '/', label: 'Vue d\u2019ensemble', shortLabel: 'Accueil', end: true, Icon: HomeIcon },
     { to: '/receipts', label: 'Reçus', shortLabel: 'Reçus', Icon: ReceiptIcon },
     { to: '/sessions', label: 'Séances', shortLabel: 'Séances', Icon: CalendarIcon },
+    { to: '/corbeille', label: 'Corbeille', shortLabel: 'Corbeille', Icon: TrashIcon },
     { to: '/sites', label: 'Succursales', shortLabel: 'Studios', Icon: BuildingIcon },
     { to: '/staff', label: 'Personnel', shortLabel: 'Personnel', Icon: UsersIcon },
   ],

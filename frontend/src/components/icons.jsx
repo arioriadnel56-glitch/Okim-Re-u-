@@ -60,6 +60,17 @@ export function PackageIcon(props) {
   );
 }
 
+export function TrashIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" {...common} {...props}>
+      <path d="M4 7h16" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 export function MenuIcon(props) {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...props}>

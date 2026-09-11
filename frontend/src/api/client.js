@@ -63,3 +63,39 @@ export async function fetchPdfBlob(receiptId) {
   if (!res.ok) throw new Error('Impossible de récupérer le reçu PDF.');
   return res.blob();
 }
+
+export async function fetchExportPdfBlob(params) {
+  const token = getToken();
+  const qs = new URLSearchParams(
+    Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString();
+  const res = await fetch(`/api/receipts/export/pdf${qs ? `?${qs}` : ''}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      throw new Error(data?.error || `Erreur ${res.status}`);
+    }
+    throw new Error("Impossible de générer l'export PDF.");
+  }
+  return res.blob();
+}
+
+// Bouton dédié côté super admin : liste PDF de toutes les séances réalisées.
+export async function fetchSessionsExportPdfBlob() {
+  const token = getToken();
+  const res = await fetch('/api/sessions/export/pdf', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      throw new Error(data?.error || `Erreur ${res.status}`);
+    }
+    throw new Error("Impossible de générer l'export PDF des séances.");
+  }
+  return res.blob();
+}

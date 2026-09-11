@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client.js';
+import { api, fetchSessionsExportPdfBlob } from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import Layout from '../components/Layout.jsx';
 
 export default function Sessions() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     api.get('/sessions')
@@ -15,14 +19,42 @@ export default function Sessions() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function handleExportSessions() {
+    setExporting(true);
+    setExportError('');
+    try {
+      const blob = await fetchSessionsExportPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `seances-okimart-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(e.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <Layout>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <h1 className="font-display text-2xl text-navy-dark">Séances</h1>
-        <Link to="/sessions/nouvelle" className="btn btn-gold">Nouvelle séance</Link>
+        <div className="flex flex-wrap gap-2">
+          {user?.role === 'super_admin' && (
+            <button onClick={handleExportSessions} disabled={exporting} className="btn btn-outline">
+              {exporting ? 'Génération…' : 'Télécharger la liste des séances (PDF)'}
+            </button>
+          )}
+          <Link to="/sessions/nouvelle" className="btn btn-gold">Nouvelle séance</Link>
+        </div>
       </div>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {exportError && <p className="text-red-600 text-sm mb-4">{exportError}</p>}
       {loading ? (
         <p className="text-stone-400 text-sm">Chargement…</p>
       ) : sessions.length === 0 ? (
