@@ -68,6 +68,22 @@ export default function ReceiptDetail() {
     }
   }
 
+  async function handleDownloadPdf() {
+    try {
+      const blob = await fetchPdfBlob(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `facture-okimart-${data.receipt.numero}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function handleConfirmDelete(motif) {
     await api.post(`/receipts/${id}/demander-suppression`, { motif });
     setShowDeleteModal(false);
@@ -224,13 +240,14 @@ function ShareReceipt({ receipt, onSent }) {
   const [email, setEmail] = useState(receipt.client_email || '');
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const publicUrl = `${window.location.origin}/api/verify/${receipt.code_verification}/pdf`;
+  // Message court joint à la facture — plus de lien : le PDF lui-même est envoyé.
   const whatsappMessage =
-    `Bonjour ${receipt.client_nom}, voici votre reçu OKIM'ART ${receipt.numero} ` +
-    `(${receipt.site_nom}). Consultez-le et téléchargez-le ici : ${publicUrl}`;
+    `Bonjour ${receipt.client_nom}, voici la facture de votre séance ${receipt.type_seance} ` +
+    `chez OKIM'ART (${receipt.site_nom}).`;
 
   async function handleSendEmail(e) {
     e.preventDefault();
@@ -249,11 +266,45 @@ function ShareReceipt({ receipt, onSent }) {
     }
   }
 
+  async function handleSendWhatsapp() {
+    setError('');
+    setSendingWhatsapp(true);
+    try {
+      const blob = await fetchPdfBlob(receipt.id);
+      const file = new File([blob], `facture-okimart-${receipt.numero}.pdf`, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Ouvre le partage natif du téléphone : en choisissant WhatsApp, le PDF est joint
+        // directement au message, avec le court texte explicatif, sans aucun lien.
+        await navigator.share({ files: [file], text: whatsappMessage, title: `Facture ${receipt.numero}` });
+      } else {
+        // Le navigateur (généralement un ordinateur) ne sait pas partager de fichier
+        // directement : on télécharge la facture, puis on ouvre WhatsApp avec le message
+        // prêt à envoyer — il suffit alors de joindre le fichier téléchargé à la conversation.
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `facture-okimart-${receipt.numero}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        window.open(buildWhatsappShareUrl(receipt.client_telephone, whatsappMessage), '_blank');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setError(err.message || "Impossible d'envoyer la facture par WhatsApp.");
+      }
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  }
+
   return (
     <div className="card p-6 mb-8">
       <p className="text-sm font-medium text-navy-dark mb-1">Partager le reçu avec le client</p>
       <p className="text-xs text-stone-400 mb-4">
-        Le client peut consulter et télécharger son reçu via ce lien, sans avoir besoin de se connecter.
+        Envoyez directement le PDF de la facture par WhatsApp (avec un court message), ou par email.
       </p>
 
       {receipt.email_envoye_at && (
@@ -265,14 +316,9 @@ function ShareReceipt({ receipt, onSent }) {
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
 
       <div className="flex flex-wrap gap-3">
-        <a
-          href={buildWhatsappShareUrl(receipt.client_telephone, whatsappMessage)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-outline"
-        >
-          Envoyer par WhatsApp
-        </a>
+        <button onClick={handleSendWhatsapp} disabled={sendingWhatsapp} className="btn btn-outline">
+          {sendingWhatsapp ? 'Préparation…' : 'Envoyer par WhatsApp'}
+        </button>
         <button className="btn btn-outline" onClick={() => setShowEmailForm((v) => !v)}>
           {showEmailForm ? 'Annuler' : 'Envoyer par email'}
         </button>
