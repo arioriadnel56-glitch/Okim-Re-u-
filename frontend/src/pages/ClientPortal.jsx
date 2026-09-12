@@ -156,8 +156,13 @@ function ReceiptQuickShare({ receipt, clientEmail, clientNom }) {
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Message court joint à l'image de la facture — pas de lien.
-  const whatsappMessage = `Voici la facture de ma séance ${receipt.type_seance} chez OKIM'ART (${receipt.site_nom}).`;
+  // Message court joint à l'image de la facture — pas de lien, avec le détail du solde actuel.
+  const resteAPayer = Math.max(0, (receipt.montant_total || 0) - (receipt.montant_paye || 0));
+  const whatsappMessage =
+    `Voici la facture de ma séance ${receipt.type_seance} chez OKIM'ART (${receipt.site_nom}).\n\n` +
+    `Montant total : ${fcfa(receipt.montant_total)}\n` +
+    `Montant payé : ${fcfa(receipt.montant_paye)}\n` +
+    `Reste à payer : ${fcfa(resteAPayer)}`;
 
   async function handleShareWhatsapp() {
     setSharing(true);
