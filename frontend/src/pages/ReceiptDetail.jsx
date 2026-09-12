@@ -245,10 +245,15 @@ function ShareReceipt({ receipt, onSent }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Message court joint à la facture — plus de lien : le PDF lui-même est envoyé.
+  // Message court joint à la facture — plus de lien : l'image de la facture est envoyée,
+  // avec le détail du solde actuel (montant payé / total / reste à payer).
+  const resteAPayer = Math.max(0, (receipt.montant_total || 0) - (receipt.montant_paye || 0));
   const whatsappMessage =
     `Bonjour ${receipt.client_nom}, voici la facture de votre séance ${receipt.type_seance} ` +
-    `chez OKIM'ART (${receipt.site_nom}).`;
+    `chez OKIM'ART (${receipt.site_nom}).\n\n` +
+    `Montant total : ${fcfa(receipt.montant_total)}\n` +
+    `Montant payé : ${fcfa(receipt.montant_paye)}\n` +
+    `Reste à payer : ${fcfa(resteAPayer)}`;
 
   async function handleSendEmail(e) {
     e.preventDefault();
