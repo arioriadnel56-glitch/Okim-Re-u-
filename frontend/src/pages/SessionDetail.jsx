@@ -1,19 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { useAuth } from '../context/AuthContext.jsx';
 import Layout from '../components/Layout.jsx';
 import StatusBadge, { PaymentBadge } from '../components/StatusBadge.jsx';
 
 export default function SessionDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
   const [session, setSession] = useState(null);
   const [receipts, setReceipts] = useState([]);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   function load() {
     api.get(`/sessions/${id}`).then((d) => setSession(d.session)).catch((e) => setError(e.message));
@@ -21,19 +17,6 @@ export default function SessionDetail() {
   }
 
   useEffect(load, [id]);
-
-  async function handleDelete() {
-    if (!window.confirm(`Supprimer définitivement la séance « ${session.type_seance} » de ${session.client_nom} ? Cette action est irréversible.`)) return;
-    setDeleting(true);
-    setError('');
-    try {
-      await api.delete(`/sessions/${id}`);
-      navigate('/sessions');
-    } catch (e) {
-      setError(e.message);
-      setDeleting(false);
-    }
-  }
 
   return (
     <Layout>
@@ -47,19 +30,7 @@ export default function SessionDetail() {
                 {session.client_nom} — {new Date(session.date_seance).toLocaleDateString('fr-FR')} — {session.site_nom}
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              {user?.role === 'super_admin' && (
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="btn btn-outline text-red-600 hover:bg-red-50"
-                  title="Supprimer définitivement (impossible si un reçu y est rattaché)"
-                >
-                  {deleting ? 'Suppression…' : 'Supprimer'}
-                </button>
-              )}
-              <Link to="/sessions" className="text-sm text-stone-500 hover:text-navy-dark">← Toutes les séances</Link>
-            </div>
+            <Link to="/sessions" className="text-sm text-stone-500 hover:text-navy-dark">← Toutes les séances</Link>
           </div>
 
           <div className="card p-6 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
