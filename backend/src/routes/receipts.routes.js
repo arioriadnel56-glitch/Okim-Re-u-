@@ -287,6 +287,20 @@ router.get('/corbeille/archives', requireAuth, requireRole('super_admin'), async
   }
 });
 
+// Bouton « Supprimer » sur chaque ligne de l'historique : efface définitivement cette trace
+// d'archive (le reçu lui-même a déjà été supprimé plus tôt lors de la validation).
+router.delete('/corbeille/archives/:archiveId', requireAuth, requireRole('super_admin'), async (req, res, next) => {
+  try {
+    const existing = await dbGet('SELECT * FROM receipts_deleted_archive WHERE id = $1', [req.params.archiveId]);
+    if (!existing) return res.status(404).json({ error: "Cette entrée de l'historique est introuvable." });
+
+    await dbRun('DELETE FROM receipts_deleted_archive WHERE id = $1', [req.params.archiveId]);
+    res.json({ ok: true, message: "L'entrée a été supprimée de l'historique." });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // La secrétaire (staff) — ou le super admin — demande la suppression d'un reçu, avec
 // justification obligatoire. Le reçu part alors dans la corbeille, en attente de validation.
 router.post('/:id/demander-suppression', requireAuth, requireRole('staff', 'super_admin'), async (req, res, next) => {
