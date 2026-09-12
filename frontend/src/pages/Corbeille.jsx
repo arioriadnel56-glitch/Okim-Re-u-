@@ -59,6 +59,21 @@ export default function Corbeille() {
     }
   }
 
+  async function handleDeleteArchive(a) {
+    if (!window.confirm(`Supprimer définitivement cette entrée de l'historique (reçu ${a.numero}) ?`)) return;
+    setBusyId(`archive-${a.id}`);
+    setError('');
+    try {
+      await api.delete(`/receipts/corbeille/archives/${a.id}`);
+      setNotice(`L'entrée d'historique du reçu ${a.numero} a été supprimée.`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <Layout>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -157,7 +172,7 @@ export default function Corbeille() {
         <div className="card p-10 text-center text-stone-500">Aucune suppression définitive pour l'instant.</div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
+          <table className="w-full text-sm min-w-[780px]">
             <thead>
               <tr className="text-left text-stone-500 border-b border-stone-200 bg-stone-50">
                 <th className="px-4 py-3 font-medium">N° Reçu</th>
@@ -165,6 +180,7 @@ export default function Corbeille() {
                 <th className="px-4 py-3 font-medium">Demandé par</th>
                 <th className="px-4 py-3 font-medium">Validé par</th>
                 <th className="px-4 py-3 font-medium">Supprimé le</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -175,6 +191,16 @@ export default function Corbeille() {
                   <td className="px-4 py-3 text-stone-500">{a.demande_par_nom || '—'}</td>
                   <td className="px-4 py-3 text-stone-500">{a.valide_par_nom || '—'}</td>
                   <td className="px-4 py-3 text-stone-500">{new Date(a.valide_at).toLocaleString('fr-FR')}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleDeleteArchive(a)}
+                      disabled={busyId === `archive-${a.id}`}
+                      className="text-xs text-red-600 hover:underline"
+                      title="Supprimer cette entrée de l'historique"
+                    >
+                      Supprimer
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
