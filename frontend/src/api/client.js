@@ -49,6 +49,7 @@ export const api = {
   post: (path, body) => request(path, { method: 'POST', body }),
   put: (path, body) => request(path, { method: 'PUT', body }),
   patch: (path, body) => request(path, { method: 'PATCH', body }),
+  delete: (path) => request(path, { method: 'DELETE' }),
 };
 
 export function pdfUrl(receiptId) {
@@ -99,3 +100,4 @@ export async function fetchSessionsExportPdfBlob() {
   }
   return res.blob();
 }
+
