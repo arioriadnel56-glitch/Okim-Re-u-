@@ -6,6 +6,8 @@ export default function Sites() {
   const [sites, setSites] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busyId, setBusyId] = useState(null);
 
   function load() {
     api.get('/sites').then((d) => setSites(d.sites)).catch((e) => setError(e.message));
@@ -21,6 +23,22 @@ export default function Sites() {
     }
   }
 
+  async function handleDelete(site) {
+    if (!window.confirm(`Supprimer définitivement le studio « ${site.nom} » ? Cette action est irréversible.`)) return;
+    setBusyId(site.id);
+    setError('');
+    setNotice('');
+    try {
+      await api.delete(`/sites/${site.id}`);
+      setNotice(`Le studio « ${site.nom} » a été supprimé.`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <Layout>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -30,6 +48,7 @@ export default function Sites() {
         </button>
       </div>
 
+      {notice && <p className="text-emerald-700 text-sm mb-4">{notice}</p>}
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
       {showForm && <SiteForm onCreated={() => { setShowForm(false); load(); }} />}
 
@@ -47,9 +66,26 @@ export default function Sites() {
             </div>
             {s.adresse && <p className="text-sm text-stone-500 mt-3">{s.adresse}</p>}
             {s.telephone && <p className="text-sm text-stone-500">{s.telephone}</p>}
-            <button onClick={() => toggleActif(s)} className="text-xs text-gold-dark hover:underline mt-4">
-              {s.actif ? 'Désactiver' : 'Réactiver'}
-            </button>
+            {typeof s.receipts_count === 'number' && (
+              <p className="text-xs text-stone-400 mt-2">
+                {s.receipts_count === 0
+                  ? 'Aucun reçu enregistré pour ce studio.'
+                  : `${s.receipts_count} reçu(s) dans l'historique de ce studio.`}
+              </p>
+            )}
+            <div className="flex items-center gap-4 mt-4">
+              <button onClick={() => toggleActif(s)} className="text-xs text-gold-dark hover:underline">
+                {s.actif ? 'Désactiver' : 'Réactiver'}
+              </button>
+              <button
+                onClick={() => handleDelete(s)}
+                disabled={busyId === s.id}
+                className="text-xs text-red-600 hover:underline"
+                title="Supprimer définitivement (impossible s'il existe un historique de reçus)"
+              >
+                Supprimer
+              </button>
+            </div>
           </div>
         ))}
       </div>
