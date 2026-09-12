@@ -10,7 +10,8 @@ router.get('/', requireAuth, async (req, res, next) => {
     let rows;
     if (req.user.role === 'super_admin') {
       rows = await dbAll(
-        `SELECT u.id, u.nom, u.telephone, u.email, u.site_id, u.actif, u.created_at, s.nom as site_nom
+        `SELECT u.id, u.nom, u.telephone, u.email, u.site_id, u.actif, u.created_at, s.nom as site_nom,
+                (SELECT COUNT(*) FROM receipts r WHERE r.created_by = u.id)::int AS receipts_count
          FROM users u LEFT JOIN sites s ON s.id = u.site_id
          WHERE u.role = 'staff' ORDER BY u.created_at DESC`
       );
@@ -85,4 +86,29 @@ router.post('/:id/reset-password', requireAuth, requireRole('super_admin'), asyn
   }
 });
 
+// Bouton « Supprimer » côté super admin, sur la section Personnel (comptes secrétaires).
+// Comme pour les studios, le compte ne peut être supprimé que s'il n'a laissé aucune trace
+// (reçus créés, paiements encaissés, séances) — la base protège cet historique via ses clés
+// étrangères ; on transforme l'erreur en message clair suggérant de désactiver le compte.
+router.delete('/:id', requireAuth, requireRole('super_admin'), async (req, res, next) => {
+  try {
+    const existing = await dbGet("SELECT * FROM users WHERE id = $1 AND role = 'staff'", [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Membre du personnel introuvable.' });
+
+    await dbRun('DELETE FROM users WHERE id = $1', [req.params.id]);
+    res.json({ ok: true, message: 'Le compte a été supprimé.' });
+  } catch (e) {
+    if (e.code === '23503') {
+      return res.status(409).json({
+        error:
+          'Impossible de supprimer ce compte : il possède un historique de reçus/séances. ' +
+          'Désactivez-le plutôt pour conserver cet historique.',
+      });
+    }
+    next(e);
+  }
+});
+
 export default router;
+
+    
