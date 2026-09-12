@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { dbGet, dbAll } from '../db.js';
+import { dbGet, dbAll, dbRun } from '../db.js';
 import { requireAuth, requireRole, hashPassword, scopeSiteId } from '../auth.js';
 import { generateTempPassword } from '../utils/codes.js';
 import { buildSessionsListPdf } from '../utils/pdf.js';
@@ -127,6 +127,28 @@ router.get('/:id', requireAuth, requireRole('staff', 'super_admin'), async (req,
     }
     res.json({ session });
   } catch (e) {
+    next(e);
+  }
+});
+
+// Bouton « Supprimer », réservé au super admin, dans la section Séances. La séance ne peut
+// être supprimée que si aucun reçu n'y est rattaché — la base refuse sinon (clé étrangère),
+// ce qui protège l'historique des reçus ; l'erreur est alors traduite en message clair.
+router.delete('/:id', requireAuth, requireRole('super_admin'), async (req, res, next) => {
+  try {
+    const existing = await dbGet('SELECT * FROM sessions_photo WHERE id = $1', [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Séance introuvable.' });
+
+    await dbRun('DELETE FROM sessions_photo WHERE id = $1', [req.params.id]);
+    res.json({ ok: true, message: 'La séance a été supprimée.' });
+  } catch (e) {
+    if (e.code === '23503') {
+      return res.status(409).json({
+        error:
+          "Impossible de supprimer cette séance : un reçu y est rattaché. " +
+          'Supprimez ou déplacez ce reçu (via la corbeille) avant de retenter.',
+      });
+    }
     next(e);
   }
 });
