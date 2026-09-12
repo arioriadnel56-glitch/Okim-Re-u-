@@ -7,7 +7,9 @@ export default function Staff() {
   const [sites, setSites] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [newAccount, setNewAccount] = useState(null);
+  const [busyId, setBusyId] = useState(null);
 
   function load() {
     api.get('/staff').then((d) => setStaff(d.staff)).catch((e) => setError(e.message));
@@ -34,6 +36,22 @@ export default function Staff() {
     }
   }
 
+  async function handleDelete(member) {
+    if (!window.confirm(`Supprimer définitivement le compte de ${member.nom} ? Cette action est irréversible.`)) return;
+    setBusyId(member.id);
+    setError('');
+    setNotice('');
+    try {
+      await api.delete(`/staff/${member.id}`);
+      setNotice(`Le compte de ${member.nom} a été supprimé.`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <Layout>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -43,6 +61,7 @@ export default function Staff() {
         </button>
       </div>
 
+      {notice && <p className="text-emerald-700 text-sm mb-4">{notice}</p>}
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {newAccount && (
@@ -60,12 +79,13 @@ export default function Staff() {
       )}
 
       <div className="card overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[720px]">
           <thead>
             <tr className="text-left text-stone-500 border-b border-stone-200 bg-stone-50">
               <th className="px-4 py-3 font-medium">Nom</th>
               <th className="px-4 py-3 font-medium">Téléphone</th>
               <th className="px-4 py-3 font-medium">Studio</th>
+              <th className="px-4 py-3 font-medium">Historique</th>
               <th className="px-4 py-3 font-medium">Statut</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
@@ -76,15 +96,26 @@ export default function Staff() {
                 <td className="px-4 py-3 font-medium text-navy-dark">{s.nom}</td>
                 <td className="px-4 py-3">{s.telephone}</td>
                 <td className="px-4 py-3 text-stone-500">{s.site_nom}</td>
+                <td className="px-4 py-3 text-stone-500">
+                  {typeof s.receipts_count === 'number' ? `${s.receipts_count} reçu(s)` : '—'}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`badge ${s.actif ? 'badge-livre' : 'badge-attente'}`}>{s.actif ? 'Actif' : 'Inactif'}</span>
                 </td>
-                <td className="px-4 py-3 text-right space-x-3">
+                <td className="px-4 py-3 text-right space-x-3 whitespace-nowrap">
                   <button onClick={() => handleResetPassword(s)} className="text-xs text-gold-dark hover:underline">
                     Réinitialiser mdp
                   </button>
                   <button onClick={() => toggleActif(s)} className="text-xs text-stone-500 hover:underline">
                     {s.actif ? 'Désactiver' : 'Réactiver'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s)}
+                    disabled={busyId === s.id}
+                    className="text-xs text-red-600 hover:underline"
+                    title="Supprimer définitivement (impossible s'il existe un historique de reçus)"
+                  >
+                    Supprimer
                   </button>
                 </td>
               </tr>
