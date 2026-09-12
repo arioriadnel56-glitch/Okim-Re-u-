@@ -9,20 +9,15 @@ export default function Sessions() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const [busyId, setBusyId] = useState(null);
 
-  function load() {
-    setLoading(true);
+  useEffect(() => {
     api.get('/sessions')
       .then((d) => setSessions(d.sessions))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }
-
-  useEffect(load, []);
+  }, []);
 
   async function handleExportSessions() {
     setExporting(true);
@@ -44,22 +39,6 @@ export default function Sessions() {
     }
   }
 
-  async function handleDelete(session) {
-    if (!window.confirm(`Supprimer définitivement la séance « ${session.type_seance} » de ${session.client_nom} ? Cette action est irréversible.`)) return;
-    setBusyId(session.id);
-    setError('');
-    setNotice('');
-    try {
-      await api.delete(`/sessions/${session.id}`);
-      setNotice('La séance a été supprimée.');
-      load();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   return (
     <Layout>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
@@ -74,7 +53,6 @@ export default function Sessions() {
         </div>
       </div>
 
-      {notice && <p className="text-emerald-700 text-sm mb-4">{notice}</p>}
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
       {exportError && <p className="text-red-600 text-sm mb-4">{exportError}</p>}
       {loading ? (
@@ -94,7 +72,6 @@ export default function Sessions() {
                 <th className="px-4 py-3 font-medium">Studio</th>
                 <th className="px-4 py-3 font-medium text-right">Montant</th>
                 <th className="px-4 py-3 font-medium"></th>
-                {user?.role === 'super_admin' && <th className="px-4 py-3 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
@@ -113,18 +90,6 @@ export default function Sessions() {
                       Ouvrir
                     </Link>
                   </td>
-                  {user?.role === 'super_admin' && (
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(s)}
-                        disabled={busyId === s.id}
-                        className="text-red-600 hover:underline text-sm"
-                        title="Supprimer définitivement (impossible si un reçu y est rattaché)"
-                      >
-                        Supprimer
-                      </button>
-                    </td>
-                  )}
                 </tr>
               ))}
             </tbody>
@@ -133,4 +98,3 @@ export default function Sessions() {
       )}
     </Layout>
   );
-}
