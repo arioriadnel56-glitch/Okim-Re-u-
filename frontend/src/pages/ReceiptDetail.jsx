@@ -311,7 +311,7 @@ function ShareReceipt({ receipt, onSent }) {
     <div className="card p-6 mb-8">
       <p className="text-sm font-medium text-navy-dark mb-1">Partager le reçu avec le client</p>
       <p className="text-xs text-stone-400 mb-4">
-        Envoyez directement le PDF de la facture par WhatsApp (avec un court message), ou par email.
+        Envoyez directement une image de la facture par WhatsApp (avec le solde actuel), ou le PDF par email.
       </p>
 
       {receipt.email_envoye_at && (
