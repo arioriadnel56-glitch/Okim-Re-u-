@@ -164,6 +164,21 @@ function ReceiptQuickShare({ receipt, clientEmail, clientNom }) {
     `Montant payé : ${fcfa(receipt.montant_paye)}\n` +
     `Reste à payer : ${fcfa(resteAPayer)}`;
 
+  // Sur certains téléphones (en particulier iPhone), WhatsApp n'ajoute pas automatiquement
+  // le texte fourni au partage natif comme légende de l'image — il est alors perdu. On
+  // copie donc aussi le message dans le presse-papiers, à coller manuellement si besoin.
+  async function copyMessageToClipboard() {
+    try {
+      await navigator.clipboard.writeText(whatsappMessage);
+      setMessage(
+        "Message avec le solde aussi copié : collez-le (appui long → Coller) si WhatsApp ne " +
+        "l'affiche pas automatiquement sous la photo."
+      );
+    } catch {
+      // Presse-papiers indisponible : sans gravité, les montants figurent déjà sur l'image.
+    }
+  }
+
   async function handleShareWhatsapp() {
     setSharing(true);
     setMessage('');
@@ -173,6 +188,7 @@ function ReceiptQuickShare({ receipt, clientEmail, clientNom }) {
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], text: whatsappMessage, title: `Facture ${receipt.numero}` });
+        await copyMessageToClipboard();
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
