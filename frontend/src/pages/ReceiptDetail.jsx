@@ -244,6 +244,7 @@ function ShareReceipt({ receipt, onSent }) {
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copyNotice, setCopyNotice] = useState('');
 
   // Message court joint à la facture — plus de lien : l'image de la facture est envoyée,
   // avec le détail du solde actuel (montant payé / total / reste à payer).
@@ -254,6 +255,23 @@ function ShareReceipt({ receipt, onSent }) {
     `Montant total : ${fcfa(receipt.montant_total)}\n` +
     `Montant payé : ${fcfa(receipt.montant_paye)}\n` +
     `Reste à payer : ${fcfa(resteAPayer)}`;
+
+  // Sur certains téléphones (en particulier iPhone), WhatsApp n'ajoute pas automatiquement
+  // le texte fourni au partage natif comme légende de l'image — il est alors perdu. Copier
+  // le message dans le presse-papiers garantit que le détail du solde reste disponible :
+  // il suffit de le coller dans la conversation si la légende n'apparaît pas toute seule.
+  async function copyMessageToClipboard() {
+    try {
+      await navigator.clipboard.writeText(whatsappMessage);
+      setCopyNotice(
+        "Le message avec le détail du solde a aussi été copié : si WhatsApp ne l'affiche pas " +
+        'automatiquement sous la photo, collez-le (appui long → Coller) dans la conversation.'
+      );
+    } catch {
+      // Presse-papiers indisponible (permission refusée) : sans gravité, les montants
+      // figurent déjà sur l'image de la facture elle-même.
+    }
+  }
 
   async function handleSendEmail(e) {
     e.preventDefault();
@@ -274,6 +292,7 @@ function ShareReceipt({ receipt, onSent }) {
 
   async function handleSendWhatsapp() {
     setError('');
+    setCopyNotice('');
     setSendingWhatsapp(true);
     try {
       // La facture est rendue en image (PNG) — aucun PDF, aucun lien n'est envoyé.
@@ -284,6 +303,7 @@ function ShareReceipt({ receipt, onSent }) {
         // Ouvre le partage natif du téléphone : en choisissant WhatsApp, l'image de la
         // facture est jointe directement au message, avec le court texte explicatif.
         await navigator.share({ files: [file], text: whatsappMessage, title: `Facture ${receipt.numero}` });
+        await copyMessageToClipboard();
       } else {
         // Le navigateur (généralement un ordinateur) ne sait pas partager de fichier
         // directement : on télécharge l'image de la facture, puis on ouvre WhatsApp avec
@@ -320,6 +340,7 @@ function ShareReceipt({ receipt, onSent }) {
         </p>
       )}
       {success && <p className="text-xs text-emerald-700 mb-3">{success}</p>}
+      {copyNotice && <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2 mb-3">{copyNotice}</p>}
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
 
       <div className="flex flex-wrap gap-3">
