@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { HomeIcon, ReceiptIcon, CalendarIcon, BuildingIcon, UsersIcon, PackageIcon, TrashIcon } from './icons.jsx';
+import { HomeIcon, ReceiptIcon, CalendarIcon, BuildingIcon, UsersIcon, PackageIcon, TrashIcon, HelpIcon } from './icons.jsx';
 
 const NAV_BY_ROLE = {
   super_admin: [
@@ -66,6 +66,13 @@ export default function Layout({ children }) {
               <div className="absolute right-0 top-11 z-40 w-56 rounded-lg bg-white text-navy-dark shadow-lg border border-stone-200 py-3 px-4">
                 <p className="text-sm font-medium truncate">{user?.nom}</p>
                 <p className="text-xs text-stone-400 mb-3">{roleLabel}</p>
+                <Link
+                  to="/aide"
+                  onClick={() => setAccountOpen(false)}
+                  className="flex items-center gap-2 text-sm text-navy-dark hover:text-gold-dark mb-2"
+                >
+                  <HelpIcon width={16} height={16} /> Centre d'aide
+                </Link>
                 <button onClick={handleLogout} className="text-sm text-red-600 hover:underline">
                   Se déconnecter
                 </button>
@@ -104,6 +111,9 @@ export default function Layout({ children }) {
         <div className="px-4 py-4 border-t border-white/10">
           <p className="text-sm font-medium truncate">{user?.nom}</p>
           <p className="text-xs text-white/50 mb-3">{roleLabel}</p>
+          <Link to="/aide" className="flex items-center gap-2 text-xs text-white/60 hover:text-gold transition-colors mb-2">
+            <HelpIcon width={14} height={14} /> Centre d'aide
+          </Link>
           <button onClick={handleLogout} className="text-xs text-white/60 hover:text-gold transition-colors">
             Se déconnecter
           </button>
