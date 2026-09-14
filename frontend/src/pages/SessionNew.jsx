@@ -154,9 +154,14 @@ export default function SessionNew() {
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={loading} className="btn btn-gold">
-          {loading ? 'Enregistrement…' : 'Créer la séance'}
-        </button>
+        <div className="flex gap-3">
+          <button type="button" onClick={() => navigate('/sessions')} className="btn btn-outline" disabled={loading}>
+            Annuler
+          </button>
+          <button type="submit" disabled={loading} className="btn btn-gold">
+            {loading ? 'Enregistrement…' : 'Créer la séance'}
+          </button>
+        </div>
       </form>
     </Layout>
   );
