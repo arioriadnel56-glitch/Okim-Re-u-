@@ -15,6 +15,7 @@ import ReceiptDetail from './pages/ReceiptDetail.jsx';
 import Sites from './pages/Sites.jsx';
 import Staff from './pages/Staff.jsx';
 import Corbeille from './pages/Corbeille.jsx';
+import Aide from './pages/Aide.jsx';
 import ClientPortal from './pages/ClientPortal.jsx';
 import PublicVerify from './pages/PublicVerify.jsx';
 
@@ -63,6 +64,10 @@ export default function App() {
       } />
       <Route path="/staff" element={
         <ProtectedRoute roles={['super_admin']}><Staff /></ProtectedRoute>
+      } />
+
+      <Route path="/aide" element={
+        <ProtectedRoute><Aide /></ProtectedRoute>
       } />
 
       <Route path="*" element={
