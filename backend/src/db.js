@@ -168,4 +168,9 @@ export async function initSchema() {
       receipt_snapshot JSONB
     );
   `);
+
+  // Numéros des photos sélectionnées par le client lors de la conception de sa facture.
+  await pool.query(`
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS numeros_photos TEXT[] NOT NULL DEFAULT '{}';
+  `);
 }
