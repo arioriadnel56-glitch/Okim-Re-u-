@@ -26,7 +26,8 @@ function fcfa(n) {
  */
 export async function buildReceiptImageBlob(receipt) {
   const width = 900;
-  const height = 1180;
+  const hasPhotos = Array.isArray(receipt.numeros_photos) && receipt.numeros_photos.length > 0;
+  const height = 1180 + (hasPhotos ? 150 : 0);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -76,6 +77,27 @@ export async function buildReceiptImageBlob(receipt) {
   row('Studio', receipt.site_nom);
   row('Type de séance', receipt.type_seance);
   if (receipt.date_seance) row('Date de la séance', new Date(receipt.date_seance).toLocaleDateString('fr-FR'));
+
+  if (Array.isArray(receipt.numeros_photos) && receipt.numeros_photos.length) {
+    ctx.fillStyle = GREY;
+    ctx.font = '400 16px Arial, sans-serif';
+    ctx.fillText(`N° des photos choisies (${receipt.numeros_photos.length})`, left, y);
+    ctx.fillStyle = NAVY_DARK;
+    ctx.font = '700 19px Arial, sans-serif';
+    // Retour à la ligne manuel, 4 lignes maximum pour ne pas déborder de l'image.
+    const maxW = width - 2 * left;
+    const lines = [];
+    let cur = '';
+    for (const n of receipt.numeros_photos) {
+      const next = cur ? `${cur}, ${n}` : n;
+      if (ctx.measureText(next).width > maxW && cur) { lines.push(cur + ','); cur = n; } else cur = next;
+    }
+    if (cur) lines.push(cur);
+    const shown = lines.slice(0, 4);
+    if (lines.length > 4) shown[3] = shown[3].replace(/,?$/, '') + ' …';
+    shown.forEach((line, i) => ctx.fillText(line, left, y + 27 + i * 26));
+    y += 27 + shown.length * 26 + 14;
+  }
 
   separator();
 
