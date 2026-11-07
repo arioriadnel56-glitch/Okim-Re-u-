@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import Layout from '../components/Layout.jsx';
 import StatusBadge, { PaymentBadge } from '../components/StatusBadge.jsx';
+import PhotoNumbersInput from '../components/PhotoNumbersInput.jsx';
 
 export default function SessionDetail() {
   const { id } = useParams();
@@ -95,6 +96,7 @@ function ReceiptForm({ session, onCreated }) {
     methode_livraison: 'retrait_studio',
     nb_photos: 0,
     nb_videos: 0,
+    numeros_photos: '',
     lien_telechargement: '',
     note: '',
   });
@@ -117,6 +119,7 @@ function ReceiptForm({ session, onCreated }) {
         mode_paiement: form.mode_paiement,
         methode_livraison: form.methode_livraison,
         nb_photos: Number(form.nb_photos),
+        numeros_photos: form.numeros_photos || undefined,
         nb_videos: Number(form.nb_videos),
         lien_telechargement: form.lien_telechargement || undefined,
         note: form.note || undefined,
@@ -161,6 +164,15 @@ function ReceiptForm({ session, onCreated }) {
           </select>
         </div>
       </div>
+      <PhotoNumbersInput
+        value={form.numeros_photos}
+        onChange={(text, list) => setForm((f) => ({
+          ...f,
+          numeros_photos: text,
+          // Le nombre de photos suit la liste saisie (modifiable ensuite à la main).
+          nb_photos: list ? list.length : f.nb_photos,
+        }))}
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">Nombre de photos</label>
