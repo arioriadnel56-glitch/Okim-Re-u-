@@ -86,6 +86,7 @@ export default function Aide() {
                   'Renseignez le type de séance, la date, le montant total, puis les informations du client (nom, téléphone obligatoire, email facultatif).',
                   'Si le numéro de téléphone est nouveau, un compte client est créé automatiquement avec un mot de passe temporaire affiché à l\u2019écran — communiquez-le au client.',
                   'Ouvrez la séance créée, puis cliquez sur « Créer un reçu ».',
+                  'Dans le formulaire, notez les numéros des photos choisies par le client (ex. « 12, 15, 20-25 ») : le nombre de photos se calcule tout seul. Vous pourrez corriger la liste plus tard depuis la page du reçu.',
                   'Indiquez le montant payé, le mode de paiement, la méthode de livraison (retrait, lien de téléchargement ou livraison physique), et validez.',
                   'Depuis le reçu : « Voir »/« Télécharger » le PDF, « Envoyer par WhatsApp » (image + solde) ou « Envoyer par email ».',
                 ]}
