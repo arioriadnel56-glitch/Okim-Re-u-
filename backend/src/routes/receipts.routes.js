@@ -4,6 +4,7 @@ import { requireAuth, requireRole, scopeSiteId } from '../auth.js';
 import { generateNumeroRecu, generateCodeVerification } from '../utils/codes.js';
 import { buildReceiptPdf, buildReceiptsBatchPdf } from '../utils/pdf.js';
 import { sendReceiptEmail } from '../utils/mailer.js';
+import { parsePhotoNumbers } from '../utils/photoNumbers.js';
 
 const router = Router();
 
@@ -98,7 +99,7 @@ async function purgeExpiredCorbeille() {
 router.post('/', requireAuth, requireRole('staff', 'super_admin'), async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { session_id, montant_total, montant_paye, mode_paiement, methode_livraison, nb_photos, nb_videos, lien_telechargement, note } = req.body;
+    const { session_id, montant_total, montant_paye, mode_paiement, methode_livraison, nb_photos, nb_videos, lien_telechargement, note, numeros_photos } = req.body;
     if (!session_id || montant_total === undefined || montant_paye === undefined || !mode_paiement) {
       client.release();
       return res.status(400).json({ error: 'session_id, montant_total, montant_paye et mode_paiement sont requis.' });
@@ -113,6 +114,16 @@ router.post('/', requireAuth, requireRole('staff', 'super_admin'), async (req, r
       return res.status(403).json({ error: 'Accès refusé.' });
     }
 
+    let numerosPhotos;
+    try {
+      numerosPhotos = parsePhotoNumbers(numeros_photos);
+    } catch (err) {
+      client.release();
+      return res.status(400).json({ error: err.message });
+    }
+    // Si des numéros sont saisis et qu'aucun nombre de photos n'est donné, on le déduit.
+    const nbPhotos = Number(nb_photos) > 0 ? Number(nb_photos) : numerosPhotos.length;
+
     const site = await dbGet('SELECT * FROM sites WHERE id = $1', [session.site_id]);
     const numero = generateNumeroRecu(site.ville);
     const code = generateCodeVerification();
@@ -123,13 +134,13 @@ router.post('/', requireAuth, requireRole('staff', 'super_admin'), async (req, r
     const { rows: [inserted] } = await client.query(
       `INSERT INTO receipts
         (numero, code_verification, session_id, site_id, client_id, montant_total, montant_paye, statut_paiement,
-         methode_livraison, nb_photos, nb_videos, lien_telechargement, note, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+         methode_livraison, nb_photos, nb_videos, lien_telechargement, note, created_by, numeros_photos)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
       [
         numero, code, session_id, session.site_id, session.client_id,
         Number(montant_total), Number(montant_paye), statutPaiement,
-        methode_livraison || 'retrait_studio', Number(nb_photos) || 0, Number(nb_videos) || 0,
-        lien_telechargement || null, note || null, req.user.id,
+        methode_livraison || 'retrait_studio', nbPhotos, Number(nb_videos) || 0,
+        lien_telechargement || null, note || null, req.user.id, numerosPhotos,
       ]
     );
 
@@ -449,6 +460,43 @@ router.patch('/:id/livraison', requireAuth, requireRole('staff', 'super_admin'),
     await dbRun(
       'INSERT INTO delivery_history (receipt_id, ancien_statut, nouveau_statut, changed_by, note) VALUES ($1, $2, $3, $4, $5)',
       [receipt.id, receipt.statut_livraison, statut_livraison, req.user.id, note || null]
+    );
+
+    const updated = await getReceiptFull(receipt.id);
+    res.json({ receipt: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Correction / complément de la liste des photos choisies par le client (staff / super admin).
+// Remplace la liste entière ; le changement est tracé dans l'historique du reçu.
+router.patch('/:id/photos', requireAuth, requireRole('staff', 'super_admin'), async (req, res, next) => {
+  try {
+    const receipt = await dbGet('SELECT * FROM receipts WHERE id = $1', [req.params.id]);
+    if (!receipt || receipt.deleted_at) return res.status(404).json({ error: 'Reçu introuvable.' });
+    if (!assertReceiptAccess(req, receipt, res)) return;
+
+    let numeros;
+    try {
+      numeros = parsePhotoNumbers(req.body.numeros_photos);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Le nombre de photos suit la liste, sauf si le personnel en indique un autre explicitement.
+    const nbPhotos = req.body.nb_photos !== undefined && req.body.nb_photos !== ''
+      ? Math.max(0, Number(req.body.nb_photos) || 0)
+      : numeros.length;
+
+    await dbRun(
+      'UPDATE receipts SET numeros_photos = $1, nb_photos = $2, updated_at = NOW() WHERE id = $3',
+      [numeros, nbPhotos, receipt.id]
+    );
+    await dbRun(
+      'INSERT INTO delivery_history (receipt_id, ancien_statut, nouveau_statut, changed_by, note) VALUES ($1, $2, $2, $3, $4)',
+      [receipt.id, receipt.statut_livraison, req.user.id,
+       `Liste des photos choisies modifiée (${numeros.length} numéro(s)).`]
     );
 
     const updated = await getReceiptFull(receipt.id);
