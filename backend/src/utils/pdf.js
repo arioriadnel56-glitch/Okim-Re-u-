@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
+import { formatPhotoNumbers } from './photoNumbers.js';
 
 const GOLD = '#c9974e';
 const NAVY = '#1c2554';
@@ -82,6 +83,13 @@ async function drawReceiptPage(doc, data) {
   doc.text(`Méthode : ${METHODE_LABELS[receipt.methode_livraison]}`, 40, y); y += 14;
   doc.text(`Statut actuel : ${STATUT_LIVRAISON_LABELS[receipt.statut_livraison]}`, 40, y); y += 14;
   doc.text(`Éléments : ${receipt.nb_photos} photo(s), ${receipt.nb_videos} vidéo(s)`, 40, y); y += 14;
+  const numerosPhotos = formatPhotoNumbers(receipt.numeros_photos);
+  if (numerosPhotos) {
+    doc.font('Helvetica-Bold').text('N° des photos choisies :', 40, y); y += 14;
+    doc.font('Helvetica');
+    const h = doc.heightOfString(numerosPhotos, { width: 340 });
+    doc.text(numerosPhotos, 40, y, { width: 340 }); y += h + 4;
+  }
 
   // QR code box
   doc.roundedRect(400, 156, 155, 200, 6).strokeColor('#e5e7eb').lineWidth(1).stroke();
