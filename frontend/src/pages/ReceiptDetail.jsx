@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import Layout from '../components/Layout.jsx';
 import StatusBadge, { PaymentBadge } from '../components/StatusBadge.jsx';
 import DeleteReceiptModal from '../components/DeleteReceiptModal.jsx';
+import PhotoNumbersInput from '../components/PhotoNumbersInput.jsx';
 import { buildWhatsappShareUrl } from '../utils/whatsapp.js';
 import { buildReceiptImageBlob } from '../utils/receiptImage.js';
 
@@ -157,6 +158,8 @@ export default function ReceiptDetail() {
           <p className="text-xs text-stone-400 mt-2">Imprimé avec le QR code sur le reçu PDF.</p>
         </div>
       </div>
+
+      <PhotoNumbersCard receipt={receipt} canEdit={isStaff} onSaved={load} />
 
       <ShareReceipt receipt={receipt} onSent={load} />
 
@@ -415,5 +418,68 @@ function PaymentForm({ receiptId, onDone }) {
         {loading ? 'Enregistrement…' : 'Enregistrer le paiement'}
       </button>
     </form>
+  );
+}
+
+
+function PhotoNumbersCard({ receipt, canEdit, onSaved }) {
+  const numeros = receipt.numeros_photos || [];
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  function startEdit() {
+    setText(numeros.join(', '));
+    setError('');
+    setEditing(true);
+  }
+
+  async function save() {
+    setSaving(true);
+    setError('');
+    try {
+      await api.patch(`/receipts/${receipt.id}/photos`, { numeros_photos: text });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card p-6 mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <p className="text-sm font-medium text-navy-dark">
+          Photos choisies par le client{numeros.length > 0 && ` (${numeros.length})`}
+        </p>
+        {canEdit && !editing && (
+          <button onClick={startEdit} className="btn btn-outline">
+            {numeros.length ? 'Modifier la liste' : 'Ajouter les numéros'}
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-3">
+          <PhotoNumbersInput value={text} onChange={(t) => setText(t)} label="Numéros des photos" />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex gap-2">
+            <button onClick={save} disabled={saving} className="btn btn-gold">{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+            <button onClick={() => setEditing(false)} disabled={saving} className="btn btn-outline">Annuler</button>
+          </div>
+        </div>
+      ) : numeros.length === 0 ? (
+        <p className="text-sm text-stone-400">Aucun numéro de photo enregistré pour ce reçu.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {numeros.map((n) => (
+            <span key={n} className="px-2.5 py-1 rounded-full bg-stone-100 text-navy-dark text-sm font-medium">{n}</span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
